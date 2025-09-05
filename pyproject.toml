@@ -1,0 +1,110 @@
+[tool.poetry]
+name = "oracle-import-tool"
+version = "0.2.0"
+description = "Oracle 12c数据库导入工具，支持多种文件格式的批量数据导入"
+authors = ["Oracle Import Tool <oracle-import@example.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/yourusername/oracle-import-tool"
+repository = "https://github.com/yourusername/oracle-import-tool"
+documentation = "https://github.com/yourusername/oracle-import-tool"
+keywords = ["oracle", "database", "import", "excel", "csv"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+
+[tool.poetry.dependencies]
+python = "^3.9.0"
+cx-oracle = "^8.3.0"
+pandas = "^2.0.0"
+openpyxl = "^3.0.0"
+xlrd = "^2.0.0"
+click = "^8.1.0"
+colorama = "^0.4.6"
+tqdm = "^4.65.0"
+python-dotenv = "^1.0.0"
+rich = "^13.0.0"
+chardet = "^5.2.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.0.0"
+pytest-cov = "^4.0.0"
+black = "^23.0.0"
+flake8 = "^6.0.0"
+mypy = "^1.0.0"
+isort = "^5.12.0"
+pre-commit = "^3.0.0"
+
+[tool.poetry.scripts]
+oracle-import = "oracle_import_tool.main:cli"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = [
+    "tests",
+]
+pythonpath = [
+    "src",
+]
+
+[tool.coverage.run]
+source = ["src"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ .__main__.:",
+    "class .*\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
