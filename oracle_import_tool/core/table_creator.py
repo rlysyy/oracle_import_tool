@@ -374,6 +374,66 @@ class TableCreator:
         
         return merged_info
     
+    def create_table_info_from_ddl(self, ddl_info: Dict[str, Any], table_name: str) -> Dict[str, Any]:
+        """Create table info structure directly from DDL information"""
+        if not ddl_info:
+            raise ValueError(f"No DDL information provided for table {table_name}")
+        
+        # Use DDL info as the primary source
+        table_info = ddl_info.copy()
+        
+        # Ensure table name is set correctly
+        table_info['table_name'] = table_name.upper()
+        
+        # Add audit columns if not already present
+        table_info = self.add_audit_columns(table_info)
+        
+        self.logger.info(f"Created table structure from DDL for {table_name}: {len(table_info.get('columns', []))} columns")
+        return table_info
+    
+    def validate_data_against_ddl(self, df: pd.DataFrame, ddl_info: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate DataFrame structure against DDL definition"""
+        validation_result = {
+            'has_errors': False,
+            'errors': [],
+            'warnings': []
+        }
+        
+        if not ddl_info or 'columns' not in ddl_info:
+            validation_result['has_errors'] = True
+            validation_result['errors'].append("DDL information is incomplete")
+            return validation_result
+        
+        # Get DDL column names (excluding audit columns)
+        ddl_columns = [col['name'].upper() for col in ddl_info['columns'] 
+                      if not col['name'].upper().endswith('_BY') and 
+                         not col['name'].upper().endswith('_TIMESTAMP')]
+        
+        df_columns = [col.upper() for col in df.columns]
+        
+        # Check if data has more columns than DDL expects
+        extra_columns = set(df_columns) - set(ddl_columns)
+        if extra_columns:
+            validation_result['warnings'].append(f"Data has extra columns not in DDL: {extra_columns}")
+        
+        # Check if DDL has required columns that data doesn't have
+        missing_columns = set(ddl_columns) - set(df_columns)
+        if missing_columns:
+            # Check if missing columns have defaults or are nullable
+            required_missing = []
+            for col_name in missing_columns:
+                ddl_col = next((col for col in ddl_info['columns'] if col['name'].upper() == col_name), None)
+                if ddl_col and not ddl_col.get('nullable', True) and not ddl_col.get('default_value'):
+                    required_missing.append(col_name)
+            
+            if required_missing:
+                validation_result['has_errors'] = True
+                validation_result['errors'].append(f"Data missing required columns: {required_missing}")
+            elif missing_columns:
+                validation_result['warnings'].append(f"Data missing optional columns: {missing_columns}")
+        
+        return validation_result
+    
     def validate_table_structure(self, table_info: Dict[str, Any]) -> List[str]:
         """验证表结构"""
         errors = []

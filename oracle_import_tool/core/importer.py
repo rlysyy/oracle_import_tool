@@ -244,7 +244,7 @@ class OracleImporter:
                 ddl_columns = [col['name'] for col in ddl_info['columns'] 
                               if not col['name'].upper().endswith('_BY') and not col['name'].upper().endswith('_TIMESTAMP')]
             
-            df = self.file_reader.read_file(file_path, ddl_columns)
+            df = self.file_reader.read_file(file_path, ddl_columns, ddl_info)
             if df.empty:
                 self.logger.warning(f"文件 {file_info['name']} 为空，跳过处理")
                 return
@@ -252,14 +252,22 @@ class OracleImporter:
             # 更新进度
             self.progress_manager.update_file_progress(file_info['name'], table_name, len(df))
             
-            # 2. 推断表结构
-            inferred_table_info = self.table_creator.infer_table_structure(df, table_name)
-            
-            # 3. 合并DDL信息
+            # 2. 确定表结构 - DDL优先策略
             if ddl_info:
-                table_info = self.table_creator.merge_with_ddl_info(inferred_table_info, ddl_info)
+                # 当DDL文件存在时，优先使用DDL定义的结构
+                self.logger.info(f"使用DDL文件定义的表结构: {table_name}")
+                # 从DDL创建基础表结构
+                table_info = self.table_creator.create_table_info_from_ddl(ddl_info, table_name)
+                
+                # 验证数据与DDL结构的兼容性
+                validation_result = self.table_creator.validate_data_against_ddl(df, ddl_info)
+                if validation_result['has_errors']:
+                    self.logger.warning(f"数据与DDL结构存在差异: {'; '.join(validation_result['errors'])}")
+                    # 可以选择继续处理或抛出异常，这里选择继续但记录警告
             else:
-                table_info = inferred_table_info
+                # 没有DDL时才推断表结构
+                self.logger.info(f"未找到DDL文件，推断表结构: {table_name}")
+                table_info = self.table_creator.infer_table_structure(df, table_name)
             
             # 4. 验证表结构
             validation_errors = self.table_creator.validate_table_structure(table_info)

@@ -12,6 +12,7 @@ from rich.progress import (
     MofNCompleteColumn,
     TransferSpeedColumn
 )
+import os
 from rich.table import Table
 from rich.panel import Panel
 import time
@@ -49,9 +50,13 @@ class ProgressBarManager:
         self.logger = logging.getLogger(__name__)
     
     def create_progress_display(self) -> Progress:
-        """创建多层进度条显示"""
-        return Progress(
-            SpinnerColumn(),
+        """Create multi-layer progress display"""
+        # Avoid SpinnerColumn on Windows to prevent encoding issues
+        columns = []
+        if os.name != 'nt':  # Non-Windows systems
+            columns.append(SpinnerColumn())
+        
+        columns.extend([
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
             TaskProgressColumn(),
@@ -59,6 +64,10 @@ class ProgressBarManager:
             TimeElapsedColumn(),
             TimeRemainingColumn(),
             TransferSpeedColumn(),
+        ])
+        
+        return Progress(
+            *columns,
             console=self.console,
             refresh_per_second=4
         )
@@ -186,16 +195,16 @@ class ProgressBarManager:
         elapsed_time = time.time() - self.stats.start_time
         success_files = self.stats.processed_files - len(self.stats.failed_files)
         
-        table.add_row("处理文件数", str(self.stats.processed_files), "📁")
-        table.add_row("成功文件数", str(success_files), "✅")
-        table.add_row("失败文件数", str(len(self.stats.failed_files)), "❌" if len(self.stats.failed_files) > 0 else "✅")
-        table.add_row("总行数", f"{self.stats.processed_rows:,}", "📝")
-        table.add_row("成功行数", f"{self.stats.success_rows:,}", "✅")
-        table.add_row("失败行数", f"{self.stats.failed_rows:,}", "❌" if self.stats.failed_rows > 0 else "✅")
-        table.add_row("用时", f"{elapsed_time:.2f}秒", "⏱️")
+        table.add_row("Processed Files", str(self.stats.processed_files), "+")
+        table.add_row("Success Files", str(success_files), "+")
+        table.add_row("Failed Files", str(len(self.stats.failed_files)), "X" if len(self.stats.failed_files) > 0 else "+")
+        table.add_row("Total Rows", f"{self.stats.processed_rows:,}", "+")
+        table.add_row("Success Rows", f"{self.stats.success_rows:,}", "+")
+        table.add_row("Failed Rows", f"{self.stats.failed_rows:,}", "X" if self.stats.failed_rows > 0 else "+")
+        table.add_row("Elapsed Time", f"{elapsed_time:.2f}s", "+")
         
         if elapsed_time > 0 and self.stats.processed_rows > 0:
-            table.add_row("平均速度", f"{self.stats.processed_rows/elapsed_time:.0f} 行/秒", "🚀")
+            table.add_row("Average Speed", f"{self.stats.processed_rows/elapsed_time:.0f} rows/sec", "+")
         
         return table
     
@@ -257,12 +266,14 @@ class ScanProgressDisplay:
         self.console = console or Console()
     
     def scan_with_progress(self, scan_function, *args, **kwargs):
-        """带进度显示的扫描操作"""
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=self.console
-        ) as progress:
+        """Scan operation with progress display"""
+        # Avoid SpinnerColumn on Windows
+        columns = []
+        if os.name != 'nt':
+            columns.append(SpinnerColumn())
+        columns.append(TextColumn("[progress.description]{task.description}"))
+        
+        with Progress(*columns, console=self.console) as progress:
             
             task = progress.add_task("[cyan]扫描文件中...", total=None)
             
@@ -276,28 +287,32 @@ class ScanProgressDisplay:
 
 
 class DatabaseTestProgress:
-    """数据库连接测试进度显示"""
+    """Database connection test progress display"""
     
     def __init__(self, console: Optional[Console] = None):
         self.console = console or Console()
     
     def test_connection_with_progress(self, test_function, *args, **kwargs):
-        """带进度显示的数据库连接测试"""
+        """Database connection test with progress display"""
         steps = [
-            "读取配置文件",
-            "建立数据库连接", 
-            "验证连接状态",
-            "测试查询权限",
-            "连接测试完成"
+            "Reading config file",
+            "Establishing database connection", 
+            "Verifying connection status",
+            "Testing query permissions",
+            "Connection test completed"
         ]
         
-        with Progress(
-            SpinnerColumn(),
+        # Avoid SpinnerColumn on Windows
+        columns = []
+        if os.name != 'nt':
+            columns.append(SpinnerColumn())
+        columns.extend([
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
-            TaskProgressColumn(),
-            console=self.console
-        ) as progress:
+            TaskProgressColumn()
+        ])
+        
+        with Progress(*columns, console=self.console) as progress:
             
             task = progress.add_task("[cyan]数据库连接测试", total=len(steps))
             

@@ -16,8 +16,37 @@ from .database.connection import DatabaseConnection
 from .data.file_reader import FileReader
 from .utils.progress_manager import ScanProgressDisplay, DatabaseTestProgress
 
-# 初始化富文本控制台
-console = Console()
+# 初始化富文本控制台，设置Windows兼容性
+try:
+    # 在Windows系统下，使用UTF-8编码并禁用emoji以避免GBK编码错误
+    import os
+    if os.name == 'nt':  # Windows系统
+        console = Console(legacy_windows=False, force_terminal=True, _environ={"PYTHONIOENCODING": "utf-8"})
+    else:
+        console = Console()
+except Exception:
+    # 备用方案：基本控制台，无特殊格式
+    console = Console(legacy_windows=True)
+
+
+def safe_print_error(message: str, exception=None):
+    """安全地输出错误信息，避免编码问题"""
+    try:
+        if exception:
+            # 安全地转换异常信息为字符串
+            error_str = str(exception).encode('ascii', errors='replace').decode('ascii')
+            console.print(f"\n[red]{message}: {error_str}[/red]")
+        else:
+            console.print(f"\n[red]{message}[/red]")
+    except Exception:
+        # 如果Rich输出仍然有问题，使用标准print
+        try:
+            if exception:
+                print(f"ERROR: {message}: {str(exception)}")
+            else:
+                print(f"ERROR: {message}")
+        except Exception:
+            print("ERROR: An unknown error occurred")
 
 
 class PathType(click.Path):
@@ -240,7 +269,7 @@ def import_data(
             sys.exit(1)
         
     except Exception as e:
-        console.print(f"\\n[red]导入失败: {e}[/red]")
+        safe_print_error("导入失败", e)
         sys.exit(1)
 
 
@@ -281,7 +310,7 @@ def init_config(output: str):
         console.print(config_table)
         
     except Exception as e:
-        console.print(f"[red]创建配置文件失败: {e}[/red]")
+        safe_print_error("创建配置文件失败", e)
         sys.exit(1)
 
 
@@ -294,7 +323,7 @@ def validate_config(config_file: str):
         config_manager.validate()
         console.print(f"[green]配置文件 {config_file} 验证通过[/green]")
     except Exception as e:
-        console.print(f"[red]配置文件验证失败: {e}[/red]")
+        safe_print_error("配置文件验证失败", e)
         sys.exit(1)
 
 
@@ -324,7 +353,7 @@ def test_database(config: str):
             sys.exit(1)
             
     except Exception as e:
-        console.print(f"\\n[red]数据库连接失败: {e}[/red]")
+        safe_print_error("数据库连接失败", e)
         sys.exit(1)
 
 
@@ -386,7 +415,7 @@ def scan_files(folder: str, format: str):
         console.print(f"\\n[green]总计: {len(files)} 个数据文件[/green]")
             
     except Exception as e:
-        console.print(f"[red]扫描文件失败: {e}[/red]")
+        safe_print_error("扫描文件失败", e)
         sys.exit(1)
 
 
@@ -438,7 +467,7 @@ def preview_file(file_path: str, rows: int):
         console.print(data_table)
         
     except Exception as e:
-        console.print(f"[red]预览文件失败: {e}[/red]")
+        safe_print_error("预览文件失败", e)
         sys.exit(1)
 
 
